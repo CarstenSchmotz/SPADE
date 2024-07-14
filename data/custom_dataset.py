@@ -1,7 +1,7 @@
-import os
-from data.base_dataset import BaseDataset, get_transform
+from data.base_dataset import BaseDataset, get_transform, get_params
 from data.image_folder import make_dataset
 from PIL import Image
+import torchvision.transforms as transforms
 
 class CustomDataset(BaseDataset):
     def __init__(self, opt):
@@ -12,16 +12,24 @@ class CustomDataset(BaseDataset):
         self.val_label_dir = opt.val_label_dir
         self.val_image_dir = opt.val_image_dir
         self.val_lidar_dir = opt.val_lidar_dir
-        
+
+        print(f"Label directory: {self.label_dir}")
+        print(f"Image directory: {self.image_dir}")
+        print(f"Lidar directory: {self.lidar_dir}")
+        print(f"Validation label directory: {self.val_label_dir}")
+        print(f"Validation image directory: {self.val_image_dir}")
+        print(f"Validation lidar directory: {self.val_lidar_dir}")
+
         self.label_paths = sorted(make_dataset(self.label_dir, opt.max_dataset_size))
         self.image_paths = sorted(make_dataset(self.image_dir, opt.max_dataset_size))
         self.lidar_paths = sorted(make_dataset(self.lidar_dir, opt.max_dataset_size))
-        
         self.val_label_paths = sorted(make_dataset(self.val_label_dir, opt.max_dataset_size))
         self.val_image_paths = sorted(make_dataset(self.val_image_dir, opt.max_dataset_size))
         self.val_lidar_paths = sorted(make_dataset(self.val_lidar_dir, opt.max_dataset_size))
-        
-        self.transform = get_transform(opt)
+
+        assert len(self.label_paths) == len(self.image_paths) == len(self.lidar_paths), "The #images in label, image, and lidar directories do not match."
+
+        self.transform = get_transform(opt, get_params(opt))
 
     def __getitem__(self, index):
         label_path = self.label_paths[index]
@@ -53,17 +61,3 @@ class CustomDataset(BaseDataset):
         parser.add_argument('--val_image_dir', type=str, required=True, help='path to the directory that contains validation photo images')
         parser.add_argument('--val_lidar_dir', type=str, required=True, help='path to the directory that contains validation lidar images')
         return parser
-
-    def get_paths(self, opt):
-        label_dir = opt.label_dir
-        label_paths = make_dataset(label_dir, recursive=False, read_cache=True)
-
-        image_dir = opt.image_dir
-        image_paths = make_dataset(image_dir, recursive=False, read_cache=True)
-
-        lidar_dir = opt.lidar_dir
-        lidar_paths = make_dataset(lidar_dir, recursive=False, read_cache=True)
-
-        assert len(label_paths) == len(image_paths) == len(lidar_paths), "The #images in label, image, and lidar directories do not match."
-
-        return label_paths, image_paths, lidar_paths

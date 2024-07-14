@@ -1,24 +1,19 @@
-from data.base_dataset import BaseDataset, get_transform, get_params
-from data.image_folder import make_dataset
+import random
+import numpy as np
 from PIL import Image
-import torchvision.transforms as transforms
+from data.base_dataset import BaseDataset, get_transform
+from data.image_folder import make_dataset
 
 class CustomDataset(BaseDataset):
     def __init__(self, opt):
         super().__init__()
+        self.opt = opt
         self.label_dir = opt.label_dir
         self.image_dir = opt.image_dir
         self.lidar_dir = opt.lidar_dir
         self.val_label_dir = opt.val_label_dir
         self.val_image_dir = opt.val_image_dir
         self.val_lidar_dir = opt.val_lidar_dir
-
-        print(f"Label directory: {self.label_dir}")
-        print(f"Image directory: {self.image_dir}")
-        print(f"Lidar directory: {self.lidar_dir}")
-        print(f"Validation label directory: {self.val_label_dir}")
-        print(f"Validation image directory: {self.val_image_dir}")
-        print(f"Validation lidar directory: {self.val_lidar_dir}")
 
         self.label_paths = sorted(make_dataset(self.label_dir, opt.max_dataset_size))
         self.image_paths = sorted(make_dataset(self.image_dir, opt.max_dataset_size))
@@ -27,9 +22,7 @@ class CustomDataset(BaseDataset):
         self.val_image_paths = sorted(make_dataset(self.val_image_dir, opt.max_dataset_size))
         self.val_lidar_paths = sorted(make_dataset(self.val_lidar_dir, opt.max_dataset_size))
 
-        assert len(self.label_paths) == len(self.image_paths) == len(self.lidar_paths), "The #images in label, image, and lidar directories do not match."
-
-        self.transform = get_transform(opt, get_params(opt))
+        self.transform = get_transform(opt)
 
     def __getitem__(self, index):
         label_path = self.label_paths[index]
@@ -41,10 +34,14 @@ class CustomDataset(BaseDataset):
         image = Image.open(image_path).convert('RGB')  # RGB
         lidar = Image.open(lidar_path).convert('L')  # Convert to grayscale
 
+        # Get transformation parameters
+        params = get_params(self.opt, label.size)  # Assuming label.size as the size of the image
+
         # Apply transformations
-        label = self.transform(label)
-        image = self.transform(image)
-        lidar = self.transform(lidar)
+        transform_params = self.transform.get_params(params)
+        label = self.transform(label, **transform_params)
+        image = self.transform(image, **transform_params)
+        lidar = self.transform(lidar, **transform_params)
 
         return {'label': label, 'image': image, 'lidar': lidar, 'label_path': label_path, 'image_path': image_path, 'lidar_path': lidar_path}
 

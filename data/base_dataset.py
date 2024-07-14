@@ -46,6 +46,7 @@ def get_params(opt, size):
 
 def get_transform(opt, params, method=Image.BICUBIC, normalize=True, toTensor=True):
     transform_list = []
+
     if 'resize' in opt.preprocess_mode:
         osize = [opt.load_size, opt.load_size]
         transform_list.append(transforms.Resize(osize, interpolation=method))
@@ -73,9 +74,13 @@ def get_transform(opt, params, method=Image.BICUBIC, normalize=True, toTensor=Tr
         transform_list += [transforms.ToTensor()]
 
     if normalize:
-        transform_list += [transforms.Normalize((0.5, 0.5, 0.5),
-                                                (0.5, 0.5, 0.5))]
+        if opt.input_nc == 1:
+            transform_list += [transforms.Normalize((0.5,), (0.5,))]  # For grayscale
+        else:
+            transform_list += [transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]  # For RGB
+
     return transforms.Compose(transform_list)
+
 
 
 def normalize():

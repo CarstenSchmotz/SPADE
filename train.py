@@ -16,7 +16,7 @@ import wandb
 opt = TrainOptions().parse()
 
 # Initialize wandb
-wandb.init(project="spade_training", config=opt)
+wandb.init(api_key='ef5596846579c28c73141548e0e374745de56bc3', project="spade_training")
 wandb.config.update(opt)
 
 # print options to help debugging

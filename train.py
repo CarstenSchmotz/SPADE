@@ -5,33 +5,33 @@ Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses
 
 import sys
 from collections import OrderedDict
-from options.train_options import TrainOptions
+from options.train_options import TrainOptions  # Import TrainOptions for parsing command-line arguments
 import data
 from util.iter_counter import IterationCounter
 from util.visualizer import Visualizer
 from trainers.pix2pix_trainer import Pix2PixTrainer
 import wandb
 
-# parse options
+# Parse command-line options
 opt = TrainOptions().parse()
 
 # Initialize wandb
 wandb.init(api_key='ef5596846579c28c73141548e0e374745de56bc3', project="spade_training")
 wandb.config.update(opt)
 
-# print options to help debugging
+# Print options to help debugging
 print(' '.join(sys.argv))
 
-# load the dataset
+# Load the dataset
 dataloader = data.create_dataloader(opt)
 
-# create trainer for our model
+# Create trainer for our model
 trainer = Pix2PixTrainer(opt)
 
-# create tool for counting iterations
+# Create tool for counting iterations
 iter_counter = IterationCounter(opt, len(dataloader))
 
-# create tool for visualization
+# Create tool for visualization
 visualizer = Visualizer(opt)
 
 for epoch in iter_counter.training_epochs():
@@ -40,11 +40,11 @@ for epoch in iter_counter.training_epochs():
         iter_counter.record_one_iteration()
 
         # Training
-        # train generator
+        # Train generator
         if i % opt.D_steps_per_G == 0:
             trainer.run_generator_one_step(data_i)
 
-        # train discriminator
+        # Train discriminator
         trainer.run_discriminator_one_step(data_i)
 
         # Visualizations

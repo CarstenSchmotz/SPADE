@@ -67,7 +67,7 @@ class CustomDataset(BaseDataset):
         parser = BaseDataset.modify_commandline_options(parser, is_train)
         parser.add_argument('--label_dir', type=str, required=True, help='path to the directory that contains label images')
         parser.add_argument('--image_dir', type=str, required=True, help='path to the directory that contains photo images')
-        parser.add_argument('--lidar_dir', type=str, required=True, help='path to the directory that contains lidar images')
+        #parser.add_argument('--lidar_dir', type=str, required=True, help='path to the directory that contains lidar images')
         parser.add_argument('--val_label_dir', type=str, required=True, help='path to the directory that contains validation label images')
         parser.add_argument('--val_image_dir', type=str, required=True, help='path to the directory that contains validation photo images')
         parser.add_argument('--val_lidar_dir', type=str, required=True, help='path to the directory that contains validation lidar images')

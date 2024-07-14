@@ -12,6 +12,44 @@ class CustomDataset(Pix2pixDataset):
         Use option --label_dir, --image_dir, --instance_dir to specify the directories.
         The images in the directories are sorted in alphabetical order and paired in order.
     """
+    # In data/custom_dataset.py
+
+import os
+from data.base_dataset import BaseDataset, get_transform
+from data.image_folder import make_dataset
+from PIL import Image
+
+class CustomDataset(BaseDataset):
+    def __init__(self, opt):
+        BaseDataset.__init__(self, opt)
+        self.label_dir = opt.label_dir
+        self.image_dir = opt.image_dir
+        self.lidar_dir = opt.lidar_dir
+        self.val_label_dir = opt.val_label_dir
+        self.val_image_dir = opt.val_image_dir
+        self.val_lidar_dir = opt.val_lidar_dir
+        self.label_paths = sorted(make_dataset(self.label_dir, opt.max_dataset_size))
+        self.image_paths = sorted(make_dataset(self.image_dir, opt.max_dataset_size))
+        self.lidar_paths = sorted(make_dataset(self.lidar_dir, opt.max_dataset_size))
+        self.val_label_paths = sorted(make_dataset(self.val_label_dir, opt.max_dataset_size))
+        self.val_image_paths = sorted(make_dataset(self.val_image_dir, opt.max_dataset_size))
+        self.val_lidar_paths = sorted(make_dataset(self.val_lidar_dir, opt.max_dataset_size))
+        self.transform = get_transform(opt)
+
+    def __getitem__(self, index):
+        label_path = self.label_paths[index]
+        image_path = self.image_paths[index]
+        lidar_path = self.lidar_paths[index]
+        label = Image.open(label_path).convert('RGB')
+        image = Image.open(image_path).convert('RGB')
+        lidar = Image.open(lidar_path).convert('RGB')
+        label = self.transform(label)
+        image = self.transform(image)
+        lidar = self.transform(lidar)
+        return {'label': label, 'image': image, 'lidar': lidar, 'label_path': label_path, 'image_path': image_path, 'lidar_path': lidar_path}
+
+    def __len__(self):
+        return len(self.label_paths)
 
     @staticmethod
     def modify_commandline_options(parser, is_train):

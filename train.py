@@ -10,9 +10,14 @@ import data
 from util.iter_counter import IterationCounter
 from util.visualizer import Visualizer
 from trainers.pix2pix_trainer import Pix2PixTrainer
+import wandb
 
 # parse options
 opt = TrainOptions().parse()
+
+# Initialize wandb
+wandb.init(project="spade_training", config=opt)
+wandb.config.update(opt)
 
 # print options to help debugging
 print(' '.join(sys.argv))
@@ -48,12 +53,22 @@ for epoch in iter_counter.training_epochs():
             visualizer.print_current_errors(epoch, iter_counter.epoch_iter,
                                             losses, iter_counter.time_per_iter)
             visualizer.plot_current_errors(losses, iter_counter.total_steps_so_far)
+            
+            # Log losses to wandb
+            wandb.log({"epoch": epoch, "iteration": iter_counter.epoch_iter, **losses})
 
         if iter_counter.needs_displaying():
             visuals = OrderedDict([('input_label', data_i['label']),
                                    ('synthesized_image', trainer.get_latest_generated()),
                                    ('real_image', data_i['image'])])
             visualizer.display_current_results(visuals, epoch, iter_counter.total_steps_so_far)
+            
+            # Log images to wandb
+            wandb.log({
+                "input_label": [wandb.Image(visuals['input_label'], caption="Label")],
+                "synthesized_image": [wandb.Image(visuals['synthesized_image'], caption="Synthesized Image")],
+                "real_image": [wandb.Image(visuals['real_image'], caption="Real Image")]
+            })
 
         if iter_counter.needs_saving():
             print('saving the latest model (epoch %d, total_steps %d)' %
@@ -70,5 +85,9 @@ for epoch in iter_counter.training_epochs():
               (epoch, iter_counter.total_steps_so_far))
         trainer.save('latest')
         trainer.save(epoch)
+        
+        # Log model checkpoint to wandb
+        wandb.save('latest_net_G.pth')
+        wandb.save('latest_net_D.pth')
 
 print('Training was successfully finished.')

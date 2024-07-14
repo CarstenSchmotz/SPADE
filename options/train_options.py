@@ -27,6 +27,12 @@ class TrainOptions(BaseOptions):
         parser.add_argument('--beta1', type=float, default=0.0, help='momentum term of adam')
         parser.add_argument('--beta2', type=float, default=0.9, help='momentum term of adam')
         parser.add_argument('--no_TTUR', action='store_true', help='Use TTUR training scheme')
+        #added for me 
+        parser.add_argument('--val_label_dir', type=str, default='', help='path to the validation label images')
+        parser.add_argument('--val_image_dir', type=str, default='', help='path to the validation images')
+        parser.add_argument('--val_lidar_dir', type=str, default='', help='path to the validation lidar images')
+        parser.add_argument('--lidar_dir', type=str, default='', help='path to the lidar images')
+        
 
         # the default values for beta1 and beta2 differ by TTUR option
         opt, _ = parser.parse_known_args()

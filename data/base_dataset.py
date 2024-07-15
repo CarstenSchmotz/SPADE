@@ -40,7 +40,6 @@ def get_params(opt, size):
 
 
 
-
 def get_transform(opt, params, method=Image.BICUBIC, normalize=True, toTensor=True):
     transform_list = []
 
@@ -77,6 +76,7 @@ def get_transform(opt, params, method=Image.BICUBIC, normalize=True, toTensor=Tr
             transform_list.append(transforms.Normalize((0.5,), (0.5,)))
 
     return transforms.Compose(transform_list)
+
 
 
 

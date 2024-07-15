@@ -85,7 +85,7 @@ def __scale_width(img, target_width, method=Image.BICUBIC):
     if isinstance(img.size, tuple) and len(img.size) == 2:
         ow, oh = img.size
     else:
-        print(img.size "image size", tuple "tupel")
+        print(img.size, "image size", tuple, "tupel")
         raise TypeError(f"Expected img.size to be a tuple of length 2, got {type(img.size)}")
     
     if ow == target_width:

@@ -36,9 +36,9 @@ class CustomDataset(BaseDataset):
         params = get_params(self.opt, label.size)  # Assuming label.size as the size of the image
 
         # Apply transformations
-        transform_label = get_transform(self.opt, params)
+        transform_label = get_transform(self.opt, params, grayscale=True)
         transform_image = get_transform(self.opt, params)
-        transform_lidar = get_transform(self.opt, params)
+        transform_lidar = get_transform(self.opt, params, grayscale=True)
 
         label = transform_label(label)
         image = transform_image(image)

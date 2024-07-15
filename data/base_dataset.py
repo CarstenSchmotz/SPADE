@@ -1,14 +1,8 @@
-"""
-Copyright (C) 2019 NVIDIA Corporation.  All rights reserved.
-Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
-"""
-
 import torch.utils.data as data
 from PIL import Image
 import torchvision.transforms as transforms
 import numpy as np
 import random
-
 
 class BaseDataset(data.Dataset):
     def __init__(self):
@@ -20,7 +14,6 @@ class BaseDataset(data.Dataset):
 
     def initialize(self, opt):
         pass
-
 
 def get_params(opt, size):
     w, h = size
@@ -42,7 +35,6 @@ def get_params(opt, size):
 
     flip = random.random() > 0.5
     return {'crop_pos': (x, y), 'flip': flip}
-
 
 def get_transform(opt, params, method=Image.BICUBIC, normalize=True, toTensor=True):
     transform_list = []
@@ -70,26 +62,39 @@ def get_transform(opt, params, method=Image.BICUBIC, normalize=True, toTensor=Tr
     if opt.isTrain and not opt.no_flip:
         transform_list.append(transforms.Lambda(lambda img: __flip(img, params['flip'])))
 
-    if toTensor:
-        transform_list += [transforms.ToTensor()]
+    transform_list += [transforms.ToTensor()]
 
     if normalize:
         if opt.input_nc == 1:
-            transform_list += [transforms.Normalize((0.5,), (0.5,))]  # For grayscale
+            transform_list += [transforms.Normalize((0.5,), (0.5,))]
         else:
-            transform_list += [transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]  # For RGB
+            transform_list += [transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
 
     return transforms.Compose(transform_list)
 
-
-
-def normalize():
-    return transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
-
-
-def __resize(img, w, h, method=Image.BICUBIC):
+def __scale_width(img, target_width, method=Image.BICUBIC):
+    ow, oh = img.size
+    if ow == target_width:
+        return img
+    w = target_width
+    h = int(target_width * oh / ow)
     return img.resize((w, h), method)
 
+def __scale_shortside(img, target_size, method=Image.BICUBIC):
+    ow, oh = img.size
+    if ow < oh:
+        new_size = (target_size, int(target_size * oh / ow))
+    else:
+        new_size = (int(target_size * ow / oh), target_size)
+    return img.resize(new_size, method)
+
+def __crop(img, pos, size):
+    ow, oh = img.size
+    x1, y1 = pos
+    tw = th = size
+    if (ow > tw or oh > th):
+        return img.crop((x1, y1, x1 + tw, y1 + th))
+    return img
 
 def __make_power_2(img, base, method=Image.BICUBIC):
     ow, oh = img.size
@@ -99,33 +104,8 @@ def __make_power_2(img, base, method=Image.BICUBIC):
         return img
     return img.resize((w, h), method)
 
-
-def __scale_width(img, target_width, method=Image.BICUBIC):
-    ow, oh = img.size
-    if (ow == target_width):
-        return img
-    w = target_width
-    h = int(target_width * oh / ow)
+def __resize(img, w, h, method=Image.BICUBIC):
     return img.resize((w, h), method)
-
-
-def __scale_shortside(img, target_width, method=Image.BICUBIC):
-    ow, oh = img.size
-    ss, ls = min(ow, oh), max(ow, oh)  # shortside and longside
-    width_is_shorter = ow == ss
-    if (ss == target_width):
-        return img
-    ls = int(target_width * ls / ss)
-    nw, nh = (ss, ls) if width_is_shorter else (ls, ss)
-    return img.resize((nw, nh), method)
-
-
-def __crop(img, pos, size):
-    ow, oh = img.size
-    x1, y1 = pos
-    tw = th = size
-    return img.crop((x1, y1, x1 + tw, y1 + th))
-
 
 def __flip(img, flip):
     if flip:

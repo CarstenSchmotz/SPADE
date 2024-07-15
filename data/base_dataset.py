@@ -81,12 +81,19 @@ def get_transform(opt, params, method=Image.BICUBIC, normalize=True, toTensor=Tr
 
 
 def __scale_width(img, target_width, method=Image.BICUBIC):
-    ow, oh = img.size
+    # Ensure img.size is iterable (e.g., tuple)
+    if isinstance(img.size, tuple) and len(img.size) == 2:
+        ow, oh = img.size
+    else:
+        raise TypeError(f"Expected img.size to be a tuple of length 2, got {type(img.size)}")
+    
     if ow == target_width:
         return img
+    
     w = target_width
     h = int(target_width * oh / ow)
     return img.resize((w, h), method)
+
 
 def __scale_shortside(img, target_size, method=Image.BICUBIC):
     ow, oh = img.size

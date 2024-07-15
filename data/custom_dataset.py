@@ -40,8 +40,8 @@ class CustomDataset(BaseDataset):
 
         # Apply transformations
         params = get_params(self.opt, label.size)
-        transform_rgbd = get_transform(self.opt, params, grayscale=False)  # Assuming get_transform handles 4-channel input
-        transform_lidar = get_transform(self.opt, params, grayscale=True)  # Adjust for lidar input
+        transform_rgbd = get_transform(self.opt, params)  # Assuming get_transform handles 4-channel input
+        transform_lidar = get_transform(self.opt, params)  # Adjust for lidar input
 
         rgbd_image = transform_rgbd(rgbd_image)
         lidar = transform_lidar(lidar)

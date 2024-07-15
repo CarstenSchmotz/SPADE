@@ -1,7 +1,7 @@
 import random
 import numpy as np
 from PIL import Image
-from data.base_dataset import BaseDataset, get_transform
+from data.base_dataset import BaseDataset, get_transform, get_params
 from data.image_folder import make_dataset
 
 class CustomDataset(BaseDataset):
@@ -22,8 +22,6 @@ class CustomDataset(BaseDataset):
         self.val_image_paths = sorted(make_dataset(self.val_image_dir, opt.max_dataset_size))
         self.val_lidar_paths = sorted(make_dataset(self.val_lidar_dir, opt.max_dataset_size))
 
-        self.transform = get_transform(opt)
-
     def __getitem__(self, index):
         label_path = self.label_paths[index]
         image_path = self.image_paths[index]
@@ -38,10 +36,13 @@ class CustomDataset(BaseDataset):
         params = get_params(self.opt, label.size)  # Assuming label.size as the size of the image
 
         # Apply transformations
-        transform_params = self.transform.get_params(params)
-        label = self.transform(label, **transform_params)
-        image = self.transform(image, **transform_params)
-        lidar = self.transform(lidar, **transform_params)
+        transform_label = get_transform(self.opt, params)
+        transform_image = get_transform(self.opt, params)
+        transform_lidar = get_transform(self.opt, params)
+
+        label = transform_label(label)
+        image = transform_image(image)
+        lidar = transform_lidar(lidar)
 
         return {'label': label, 'image': image, 'lidar': lidar, 'label_path': label_path, 'image_path': image_path, 'lidar_path': lidar_path}
 

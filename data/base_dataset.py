@@ -62,13 +62,11 @@ def get_transform(opt, params, method=Image.BICUBIC, normalize=True, toTensor=Tr
     if opt.isTrain and not opt.no_flip:
         transform_list.append(transforms.Lambda(lambda img: __flip(img, params['flip'])))
 
-    transform_list += [transforms.ToTensor()]
+    if toTensor:
+        transform_list += [transforms.ToTensor()]
 
     if normalize:
-        if opt.input_nc == 1:
-            transform_list += [transforms.Normalize((0.5,), (0.5,))]
-        else:
-            transform_list += [transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
+        transform_list += [transforms.Normalize((0.5,), (0.5,))]
 
     return transforms.Compose(transform_list)
 

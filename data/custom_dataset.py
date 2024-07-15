@@ -28,7 +28,7 @@ class CustomDataset(BaseDataset):
         lidar_path = self.lidar_paths[index]
 
         # Read images
-        label = Image.open(label_path).convert('L')  # Convert to grayscale
+        label = Image.open(label_path).convert('L') if self.opt.output_nc == 1 else Image.open(label_path).convert('RGB') # Convert to grayscale
         image = Image.open(image_path).convert('RGB')  # RGB
         lidar = Image.open(lidar_path).convert('L')  # Convert to grayscale
 
@@ -36,9 +36,9 @@ class CustomDataset(BaseDataset):
         params = get_params(self.opt, label.size)  # Assuming label.size as the size of the image
 
         # Apply transformations
-        transform_label = get_transform(self.opt, params, grayscale=True)
-        transform_image = get_transform(self.opt, params)
-        transform_lidar = get_transform(self.opt, params, grayscale=True)
+        transform_label = get_transform(self.opt, params, method=Image.NEAREST, normalize=False)
+        transform_image = get_transform(self.opt, params, method=Image.BICUBIC, normalize=True)
+        transform_lidar = get_transform(self.opt, params, method=Image.NEAREST, normalize=False)
 
         label = transform_label(label)
         image = transform_image(image)

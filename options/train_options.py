@@ -27,7 +27,7 @@ class TrainOptions(BaseOptions):
         #parser.add_argument('--val_label_dir', type=str, required=True, help='path to the validation label images')
         #parser.add_argument('--val_image_dir', type=str, required=True, help='path to the validation images')
         #parser.add_argument('--val_lidar_dir', type=str, required=True, help='path to the validation lidar images')
-        parser.add_argument('--input_nc', type=int, default=3, help='# of input image channels: 3 for RGB and 1 for grayscale')
+        parser.add_argument('--input_nc', type=int, default=4, help='# of input image channels: 3 for RGB and 1 for grayscale')
         #parser.add_argument('--output_nc', type=int, default=1, help='# of output image channels: 3 for RGB and 1 for grayscale')
       
 

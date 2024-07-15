@@ -19,6 +19,7 @@ def get_params(opt, size):
     w, h = size
     new_h = h
     new_w = w
+
     if opt.preprocess_mode == 'resize_and_crop':
         new_h = new_w = opt.load_size
     elif opt.preprocess_mode == 'scale_width_and_crop':
@@ -35,6 +36,8 @@ def get_params(opt, size):
 
     flip = random.random() > 0.5
     return {'crop_pos': (x, y), 'flip': flip}
+
+
 
 def get_transform(opt, params, method=Image.BICUBIC, normalize=True, toTensor=True):
     transform_list = []
@@ -63,10 +66,13 @@ def get_transform(opt, params, method=Image.BICUBIC, normalize=True, toTensor=Tr
         transform_list.append(transforms.Lambda(lambda img: __flip(img, params['flip'])))
 
     if toTensor:
-        transform_list += [transforms.ToTensor()]
+        transform_list.append(transforms.ToTensor())
 
     if normalize:
-        transform_list += [transforms.Normalize((0.5,), (0.5,))]
+        if opt.input_nc == 4:  # RGBD input
+            transform_list.append(transforms.Normalize((0.5, 0.5, 0.5, 0.5), (0.5, 0.5, 0.5, 0.5)))
+        elif opt.input_nc == 1:  # Lidar input (assuming grayscale)
+            transform_list.append(transforms.Normalize((0.5,), (0.5,)))
 
     return transforms.Compose(transform_list)
 
@@ -81,10 +87,9 @@ def __scale_width(img, target_width, method=Image.BICUBIC):
 def __scale_shortside(img, target_size, method=Image.BICUBIC):
     ow, oh = img.size
     if ow < oh:
-        new_size = (target_size, int(target_size * oh / ow))
+        return img.resize((target_size, int(target_size * oh / ow)), method)
     else:
-        new_size = (int(target_size * ow / oh), target_size)
-    return img.resize(new_size, method)
+        return img.resize((int(target_size * ow / oh), target_size), method)
 
 def __crop(img, pos, size):
     ow, oh = img.size
@@ -98,8 +103,9 @@ def __make_power_2(img, base, method=Image.BICUBIC):
     ow, oh = img.size
     h = int(round(oh / base) * base)
     w = int(round(ow / base) * base)
-    if (h == oh) and (w == ow):
+    if (h == oh and w == ow):
         return img
+
     return img.resize((w, h), method)
 
 def __resize(img, w, h, method=Image.BICUBIC):
@@ -109,3 +115,4 @@ def __flip(img, flip):
     if flip:
         return img.transpose(Image.FLIP_LEFT_RIGHT)
     return img
+

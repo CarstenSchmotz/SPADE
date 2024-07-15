@@ -1,7 +1,7 @@
-import random
 import numpy as np
 from PIL import Image
-from data.base_dataset import BaseDataset, get_transform, get_params
+from torchvision.transforms import functional as F
+from data.base_dataset import BaseDataset
 from data.image_folder import make_dataset
 
 class CustomDataset(BaseDataset):
@@ -27,24 +27,25 @@ class CustomDataset(BaseDataset):
         image_path = self.image_paths[index]
         lidar_path = self.lidar_paths[index]
 
-        # Read images
-        label = Image.open(label_path).convert('L') if self.opt.output_nc == 1 else Image.open(label_path).convert('RGB') # Convert to grayscale
-        image = Image.open(image_path).convert('RGB')  # RGB
-        lidar = Image.open(lidar_path).convert('L')  # Convert to grayscale
+        # Read RGB image and depth (label) as grayscale
+        image = Image.open(image_path).convert('RGB')  # RGB image
+        label = Image.open(label_path).convert('L')    # Depth image (grayscale)
+        lidar = Image.open(lidar_path).convert('L')    # Lidar scan (grayscale)
 
-        # Get transformation parameters
-        params = get_params(self.opt, label.size)  # Assuming label.size as the size of the image
+        # Combine RGB and depth into RGBD (4-channel)
+        rgb_np = np.array(image)
+        depth_np = np.array(label)
+        rgbd_image = np.concatenate((rgb_np, depth_np[:, :, np.newaxis]), axis=2)
 
         # Apply transformations
-        transform_label = get_transform(self.opt, params, method=Image.NEAREST, normalize=False)
-        transform_image = get_transform(self.opt, params, method=Image.BICUBIC, normalize=True)
-        transform_lidar = get_transform(self.opt, params, method=Image.NEAREST, normalize=False)
+        params = get_params(self.opt, label.size)
+        transform_rgbd = get_transform(self.opt, params, grayscale=False)  # Assuming get_transform handles 4-channel input
+        transform_lidar = get_transform(self.opt, params, grayscale=True)  # Adjust for lidar input
 
-        label = transform_label(label)
-        image = transform_image(image)
+        rgbd_image = transform_rgbd(rgbd_image)
         lidar = transform_lidar(lidar)
 
-        return {'label': label, 'image': image, 'lidar': lidar, 'label_path': label_path, 'image_path': image_path, 'lidar_path': lidar_path}
+        return {'rgbd': rgbd_image, 'lidar': lidar, 'label_path': label_path, 'image_path': image_path, 'lidar_path': lidar_path}
 
     def __len__(self):
         return len(self.label_paths)

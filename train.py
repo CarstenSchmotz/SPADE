@@ -1,8 +1,3 @@
-"""
-Copyright (C) 2019 NVIDIA Corporation.  All rights reserved.
-Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
-"""
-
 import sys
 from collections import OrderedDict
 from options.train_options import TrainOptions  # Import TrainOptions for parsing command-line arguments
@@ -27,6 +22,12 @@ print(' '.join(sys.argv))
 
 # Load the dataset
 dataloader = data.create_dataloader(opt)
+
+# Modify the dataset to handle RGBD inputs
+# Ensure your dataset (`CustomDataset` or any other dataset implementation)
+# supports loading RGBD images (4-channel)
+# Example modification:
+# dataloader = data.create_dataloader(opt, rgb_only=False)  # Adjust according to your dataset loader
 
 # Create trainer for our model
 trainer = Pix2PixTrainer(opt)

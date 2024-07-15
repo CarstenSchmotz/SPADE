@@ -1,0 +1,43 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Run SPADE Training on CPU",
+            "type": "process",
+            "command": "python",
+            "args": [
+                "train.py",
+                "--name", "${input:foldername}",
+                "--dataset_mode", "custom",
+                "--label_dir", "/Users/carstenschmotz/Documents/GitHub/SPADE/datasets/output_pix2pix_rgbd_debug/train/depth/",
+                "--image_dir", "/Users/carstenschmotz/Documents/GitHub/SPADE/datasets/output_pix2pix_rgbd_debug/train/rgb/",
+                "--lidar_dir", "/Users/carstenschmotz/Documents/GitHub/SPADE/datasets/output_pix2pix_rgbd_debug/train/lidar/",
+                "--val_label_dir", "/Users/carstenschmotz/Documents/GitHub/SPADE/datasets/output_pix2pix_rgbd_debug/val/depth/",
+                "--val_image_dir", "/Users/carstenschmotz/Documents/GitHub/SPADE/datasets/output_pix2pix_rgbd_debug/val/rgb/",
+                "--val_lidar_dir", "/Users/carstenschmotz/Documents/GitHub/SPADE/datasets/output_pix2pix_rgbd_debug/val/lidar/",
+                "--gpu_ids", "-1"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "focus": false,
+                "panel": "shared",
+                "showReuseMessage": true,
+                "clear": false
+            },
+            "problemMatcher": []
+        }
+    ],
+    "inputs": [
+        {
+            "id": "foldername",
+            "type": "promptString",
+            "description": "Enter the folder name for the experiment",
+            "default": "experiment_name"
+        }
+    ]
+}

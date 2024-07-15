@@ -22,7 +22,6 @@ class CustomDataset(BaseDataset):
         self.val_label_paths = sorted(make_dataset(self.val_label_dir, opt.max_dataset_size))
         self.val_image_paths = sorted(make_dataset(self.val_image_dir, opt.max_dataset_size))
         self.val_lidar_paths = sorted(make_dataset(self.val_lidar_dir, opt.max_dataset_size))
-
     def __getitem__(self, index):
         label_path = self.label_paths[index]
         image_path = self.image_paths[index]
@@ -36,17 +35,48 @@ class CustomDataset(BaseDataset):
         # Combine RGB and depth into RGBD (4-channel)
         rgb_np = np.array(image)
         depth_np = np.array(label)
-        rgbd_image = np.concatenate((rgb_np, depth_np[:, :, np.newaxis]), axis=2)
+
+        # Debugging: print the shapes of the numpy arrays
+        print(f"RGB shape: {rgb_np.shape}, Depth shape: {depth_np.shape}")
+
+        # Check if depth image has the correct shape
+        if len(depth_np.shape) != 2:
+            raise ValueError(f"Expected depth image to have 2 dimensions, got {depth_np.shape}")
+
+        # Ensure the depth image has the same width and height as the RGB image
+        if depth_np.shape[0] != rgb_np.shape[0] or depth_np.shape[1] != rgb_np.shape[1]:
+            raise ValueError(f"Depth image size {depth_np.shape} does not match RGB image size {rgb_np.shape}")
+
+        # Add a new axis to depth image to make it (H, W, 1)
+        depth_np = depth_np[:, :, np.newaxis]
+
+        # Combine the RGB and depth images
+        rgbd_image = np.concatenate((rgb_np, depth_np), axis=2)
 
         # Apply transformations
         params = get_params(self.opt, label.size)
+
+        # Debugging: print the params and sizes before transformations
+        print(f"Params: {params}, Label size: {label.size}, RGBD image shape: {rgbd_image.shape}, Lidar size: {lidar.size}")
+
+        # Ensure sizes are tuples of length 2 before applying transformations
+        if not (isinstance(label.size, tuple) and len(label.size) == 2):
+            raise TypeError(f"Expected label.size to be a tuple of length 2, got {type(label.size)}")
+        if not (isinstance(rgbd_image.shape, tuple) and len(rgbd_image.shape) == 3):
+            raise TypeError(f"Expected rgbd_image.shape to be a tuple of length 3, got {type(rgbd_image.shape)}")
+        if not (isinstance(lidar.size, tuple) and len(lidar.size) == 2):
+            raise TypeError(f"Expected lidar.size to be a tuple of length 2, got {type(lidar.size)}")
+
+        # Transformations
         transform_rgbd = get_transform(self.opt, params)  # Assuming get_transform handles 4-channel input
         transform_lidar = get_transform(self.opt, params)  # Adjust for lidar input
 
-        rgbd_image = transform_rgbd(rgbd_image)
+        # Apply transformations
+        rgbd_image = transform_rgbd(Image.fromarray(rgbd_image))  # Convert numpy array to PIL image
         lidar = transform_lidar(lidar)
 
         return {'rgbd': rgbd_image, 'lidar': lidar, 'label_path': label_path, 'image_path': image_path, 'lidar_path': lidar_path}
+
 
     def __len__(self):
         return len(self.label_paths)

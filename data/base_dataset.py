@@ -80,6 +80,7 @@ def get_transform(opt, params, method=Image.BICUBIC, normalize=True, toTensor=Tr
 
 
 
+
 def __scale_width(img, target_width, method=Image.BICUBIC):
     # Ensure img.size is iterable (e.g., tuple)
     if isinstance(img.size, tuple) and len(img.size) == 2:

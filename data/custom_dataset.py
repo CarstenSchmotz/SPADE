@@ -35,7 +35,7 @@ class CustomDataset(BaseDataset):
         # Combine RGB and depth into RGBD (4-channel)
         rgb_np = np.array(image)
         depth_np = np.array(label)
-        print(f"Transformed RGBD shape: {rgbd_image.shape}, Transformed Lidar shape: {lidar.shape}")
+        
 
         # Debugging: print the shapes of the numpy arrays
         print(f"RGB shape: {rgb_np.shape}, Depth shape: {depth_np.shape}, RGBD shape: {rgbd_image.shape}, Lidar shape: {lidar.size}")
@@ -76,7 +76,7 @@ class CustomDataset(BaseDataset):
         # Convert numpy array to PIL image before applying transformations
         rgbd_image = transform_rgbd(Image.fromarray(rgbd_image))
         lidar = transform_lidar(lidar)
-
+        print(f"Transformed RGBD shape: {rgbd_image.shape}, Transformed Lidar shape: {lidar.shape}")
         return {'rgbd': rgbd_image, 'lidar': lidar, 'label_path': label_path, 'image_path': image_path, 'lidar_path': lidar_path}
 
 

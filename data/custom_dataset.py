@@ -68,8 +68,8 @@ class CustomDataset(BaseDataset):
             raise TypeError(f"Expected lidar.size to be a tuple of length 2, got {type(lidar.size)}")
 
         # Transformations
-        transform_rgbd = get_transform(self.opt, params, grayscale=False)  # Assuming get_transform handles 4-channel input
-        transform_lidar = get_transform(self.opt, params, grayscale=True)  # Adjust for lidar input
+        transform_rgbd = get_transform(self.opt, params)  # Assuming get_transform handles 4-channel input
+        transform_lidar = get_transform(self.opt, params)  # Adjust for lidar input
 
         # Convert numpy array to PIL image before applying transformations
         rgbd_image = transform_rgbd(Image.fromarray(rgbd_image))

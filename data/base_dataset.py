@@ -71,11 +71,12 @@ def get_transform(opt, params, method=Image.BICUBIC, normalize=True, toTensor=Tr
 
     if normalize:
         if opt.input_nc == 4:  # RGBD input
-            transform_list.append(transforms.Normalize((0.5, 0.5, 0.5, 0.5), (0.5, 0.5, 0.5, 0.5)))
+            transform_list.append(transforms.Normalize(mean=(0.5, 0.5, 0.5, 0.5), std=(0.5, 0.5, 0.5, 0.5)))
         elif opt.input_nc == 1:  # Lidar input (assuming grayscale)
-            transform_list.append(transforms.Normalize((0.5,), (0.5,)))
+            transform_list.append(transforms.Normalize(mean=(0.5,), std=(0.5,)))
 
     return transforms.Compose(transform_list)
+
 
 
 

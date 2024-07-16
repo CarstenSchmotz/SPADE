@@ -3,7 +3,7 @@ from PIL import Image
 from torchvision.transforms import functional as F
 from data.base_dataset import BaseDataset
 from data.image_folder import make_dataset
-from data.base_dataset import get_params, get_transform 
+from data.base_dataset import get_params, get_transform_lidar, get_transform_rgbd 
 from torchvision import transforms
 
 class CustomDataset(BaseDataset):
@@ -50,8 +50,8 @@ class CustomDataset(BaseDataset):
             # Apply transformations
             #print(label, "label",label.size, "label.size")
             params = get_params(self.opt, label.size)
-            transform_rgbd = self.get_transform_rgbd(params)
-            transform_lidar = self.get_transform_lidar(params)
+            transform_rgbd = get_transform_rgbd(self.opt,params)
+            transform_lidar = get_transform_lidar(self.opt,params)
 
             rgbd_image = transform_rgbd(Image.fromarray(rgbd_image))
             lidar = transform_lidar(Image.fromarray(lidar_np))

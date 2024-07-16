@@ -7,6 +7,13 @@ import importlib
 import torch.utils.data
 from data.base_dataset import BaseDataset
 
+from data.base_dataset import BaseDataset
+from data.custom_rgbd_lidar_dataset import CustomRGBDLidarDataset
+
+def find_dataset_using_name(dataset_name):
+    if dataset_name == 'custom_rgbd_lidar':
+        return CustomRGBDLidarDataset
+    # other dataset registration...
 
 def find_dataset_using_name(dataset_name):
     # Given the option --dataset [datasetname],

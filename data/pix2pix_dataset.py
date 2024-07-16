@@ -1,11 +1,9 @@
-import numpy as np
-from PIL import Image
-from torchvision.transforms import functional as F
-from data.base_dataset import BaseDataset
-from data.image_folder import make_dataset
-from data.base_dataset import get_params, get_transform
-import util.util as util
 import os
+from PIL import Image
+import torch
+from data.base_dataset import BaseDataset, get_params, get_transform
+from data.image_folder import make_dataset
+
 
 class Pix2pixDataset(BaseDataset):
     @staticmethod
@@ -17,16 +15,7 @@ class Pix2pixDataset(BaseDataset):
     def initialize(self, opt):
         self.opt = opt
 
-        label_paths, image_paths, instance_paths = self.get_paths(opt)
-
-        util.natural_sort(label_paths)
-        util.natural_sort(image_paths)
-        if not opt.no_instance:
-            util.natural_sort(instance_paths)
-
-        label_paths = label_paths[:opt.max_dataset_size]
-        image_paths = image_paths[:opt.max_dataset_size]
-        instance_paths = instance_paths[:opt.max_dataset_size]
+        label_paths, image_paths, lidar_paths = self.get_paths(opt)
 
         if not opt.no_pairing_check:
             for path1, path2 in zip(label_paths, image_paths):
@@ -35,7 +24,7 @@ class Pix2pixDataset(BaseDataset):
 
         self.label_paths = label_paths
         self.image_paths = image_paths
-        self.instance_paths = instance_paths
+        self.lidar_paths = lidar_paths
 
         size = len(self.label_paths)
         self.dataset_size = size
@@ -43,13 +32,13 @@ class Pix2pixDataset(BaseDataset):
     def get_paths(self, opt):
         label_dir = opt.label_dir
         image_dir = opt.image_dir
-        instance_dir = opt.instance_dir  # Adjust as per your dataset structure
+        lidar_dir = opt.lidar_dir
 
         label_paths = sorted(make_dataset(label_dir, opt.max_dataset_size))
         image_paths = sorted(make_dataset(image_dir, opt.max_dataset_size))
-        instance_paths = sorted(make_dataset(instance_dir, opt.max_dataset_size))
+        lidar_paths = sorted(make_dataset(lidar_dir, opt.max_dataset_size))
 
-        return label_paths, image_paths, instance_paths
+        return label_paths, image_paths, lidar_paths
 
     def paths_match(self, path1, path2):
         filename1_without_ext = os.path.splitext(os.path.basename(path1))[0]
@@ -57,49 +46,45 @@ class Pix2pixDataset(BaseDataset):
         return filename1_without_ext == filename2_without_ext
 
     def __getitem__(self, index):
-        # Label Image
+        # Label Image (Depth)
         label_path = self.label_paths[index]
-        label = Image.open(label_path).convert('RGB')  # Adjust the mode as per your label images
-
+        label = Image.open(label_path).convert('L')  # Load as grayscale
         params = get_params(self.opt, label.size)
         transform_label = get_transform(self.opt, params, method=Image.NEAREST, normalize=False)
         label_tensor = transform_label(label) * 255.0
         label_tensor[label_tensor == 255] = self.opt.label_nc  # 'unknown' is opt.label_nc
 
-        # Input Image
+        # Input Image (RGB)
         image_path = self.image_paths[index]
-        assert self.paths_match(label_path, image_path), \
-            "The label_path %s and image_path %s don't match." % (label_path, image_path)
-
-        image = Image.open(image_path).convert('RGB')  # Convert to RGB if necessary
+        image = Image.open(image_path).convert('RGB')  # Convert to RGB
 
         transform_image = get_transform(self.opt, params)
         image_tensor = transform_image(image)
 
-        # Instance Map
-        if self.opt.no_instance:
-            instance_tensor = 0
-        else:
-            instance_path = self.instance_paths[index]
-            instance = Image.open(instance_path).convert('L')  # Convert to grayscale if necessary
+        # Lidar Scan (Grayscale)
+        lidar_path = self.lidar_paths[index]
+        lidar = Image.open(lidar_path).convert('L')  # Load as grayscale
+        transform_lidar = get_transform(self.opt, params, method=Image.NEAREST, normalize=False)
+        lidar_tensor = transform_lidar(lidar) * 255.0
 
-            instance_tensor = transform_label(instance) * 255
-            instance_tensor = instance_tensor.long()
-
+        # Combine into input dictionary
         input_dict = {
             'label': label_tensor,
-            'instance': instance_tensor,
             'image': image_tensor,
-            'path': image_path,
+            'lidar': lidar_tensor,
+            'label_path': label_path,
+            'image_path': image_path,
+            'lidar_path': lidar_path
         }
 
-        # Give subclasses a chance to modify the final output
+        # Postprocess if needed (subclasses can override)
         self.postprocess(input_dict)
 
         return input_dict
 
     def postprocess(self, input_dict):
-        return input_dict
+        # Example of postprocessing if needed
+        pass
 
     def __len__(self):
         return self.dataset_size

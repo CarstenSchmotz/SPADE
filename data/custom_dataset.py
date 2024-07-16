@@ -35,7 +35,7 @@ class CustomDataset(BaseDataset):
         # Combine RGB and depth into RGBD (4-channel)
         rgb_np = np.array(image)
         depth_np = np.array(label)
-        
+        lidar_np = np.array(lidar)
 
         # Debugging: print the shapes of the numpy arrays
         print(f"RGB shape: {rgb_np.shape}, Depth shape: {depth_np.shape}, Lidar shape: {lidar.size}")

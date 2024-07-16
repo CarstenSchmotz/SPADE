@@ -4,6 +4,8 @@ from torchvision.transforms import functional as F
 from data.base_dataset import BaseDataset
 from data.image_folder import make_dataset
 from data.base_dataset import get_params, get_transform
+from torchvision import transforms
+
 
 class CustomDataset(BaseDataset):
     def __init__(self, opt):

@@ -16,7 +16,7 @@ class BaseDataset(data.Dataset):
         pass
     
 
-    def get_params(opt, size):
+    def get_params(self, opt, size):
         w, h = size
         new_h = h
         new_w = w

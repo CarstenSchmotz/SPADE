@@ -48,10 +48,10 @@ class CustomDataset(BaseDataset):
             print(f"RGBD image shape: {rgbd_image.shape}")
 
             # Apply transformations
-            print(label, "label",label.size, "label.size")
+            #print(label, "label",label.size, "label.size")
             params = get_params(self.opt, label.size)
-            transform_rgbd = self.get_transform_rgbd(params, input_nc=4)
-            transform_lidar = self.get_transform_lidar(params, input_nc=1)
+            transform_rgbd = self.get_transform_rgbd(params)
+            transform_lidar = self.get_transform_lidar(params)
 
             rgbd_image = transform_rgbd(Image.fromarray(rgbd_image))
             lidar = transform_lidar(Image.fromarray(lidar_np))

@@ -4,7 +4,6 @@ import torch
 from data.base_dataset import BaseDataset, get_params, get_transform
 from data.image_folder import make_dataset
 
-
 class Pix2pixDataset(BaseDataset):
     @staticmethod
     def modify_commandline_options(parser, is_train):
@@ -67,11 +66,24 @@ class Pix2pixDataset(BaseDataset):
         transform_lidar = get_transform(self.opt, params, method=Image.NEAREST, normalize=False)
         lidar_tensor = transform_lidar(lidar) * 255.0
 
+        # Instance Map (if needed)
+        if self.opt.no_instance:
+            instance_tensor = None  # or any placeholder you choose
+        else:
+            instance_path = self.instance_paths[index]  # Adjust as per your dataset structure
+            instance = Image.open(instance_path)
+            if instance.mode == 'L':
+                instance_tensor = transform_label(instance) * 255
+                instance_tensor = instance_tensor.long()
+            else:
+                instance_tensor = transform_label(instance)
+
         # Combine into input dictionary
         input_dict = {
             'label': label_tensor,
             'image': image_tensor,
             'lidar': lidar_tensor,
+            'instance': instance_tensor,  # Include instance map if needed
             'label_path': label_path,
             'image_path': image_path,
             'lidar_path': lidar_path

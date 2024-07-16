@@ -3,7 +3,8 @@ from PIL import Image
 from torchvision.transforms import functional as F
 from data.base_dataset import BaseDataset
 from data.image_folder import make_dataset
-from data.base_dataset import get_params, get_transform
+from data.base_dataset import get_params, get_transform 
+from data.base_dataset import scale_width, scale_shortside, crop, make_power_2, resize, flip 
 from torchvision import transforms
 
 class CustomDataset(BaseDataset):
@@ -63,78 +64,7 @@ class CustomDataset(BaseDataset):
             print(f"Error processing index {index}: {e}")
             raise
 
-    def get_transform_rgbd(self, params, method=Image.BICUBIC, normalize=True, toTensor=True):
-        transform_list = []
-
-        if 'resize' in self.opt.preprocess_mode:
-            osize = [self.opt.load_size, self.opt.load_size]
-            transform_list.append(transforms.Resize(osize, interpolation=method))
-        elif 'scale_width' in self.opt.preprocess_mode:
-            transform_list.append(transforms.Lambda(lambda img: self.__scale_width(img, self.opt.load_size, method)))
-        elif 'scale_shortside' in self.opt.preprocess_mode:
-            transform_list.append(transforms.Lambda(lambda img: self.__scale_shortside(img, self.opt.load_size, method)))
-
-        if 'crop' in self.opt.preprocess_mode:
-            transform_list.append(transforms.Lambda(lambda img: self.__crop(img, params['crop_pos'], self.opt.crop_size)))
-
-        if self.opt.preprocess_mode == 'none':
-            base = 32
-            transform_list.append(transforms.Lambda(lambda img: self.__make_power_2(img, base, method)))
-
-        if self.opt.preprocess_mode == 'fixed':
-            w = self.opt.crop_size
-            h = round(self.opt.crop_size / self.opt.aspect_ratio)
-            transform_list.append(transforms.Lambda(lambda img: self.__resize(img, w, h, method)))
-
-        if self.opt.isTrain and not self.opt.no_flip:
-            transform_list.append(transforms.Lambda(lambda img: self.__flip(img, params['flip'])))
-
-        if toTensor:
-            transform_list.append(transforms.ToTensor())
-
-        if normalize:
-            if self.opt.input_nc == 4:  # RGBD input
-                transform_list.append(transforms.Normalize((0.5, 0.5, 0.5, 0.5), (0.5, 0.5, 0.5, 0.5)))
-
-        return transforms.Compose(transform_list)
-
-    def get_transform_lidar(self, params, method=Image.BICUBIC, normalize=True, toTensor=True):
-        transform_list = []
-
-        if 'resize' in self.opt.preprocess_mode:
-            osize = [self.opt.load_size, self.opt.load_size]
-            transform_list.append(transforms.Resize(osize, interpolation=method))
-        elif 'scale_width' in self.opt.preprocess_mode:
-            transform_list.append(transforms.Lambda(lambda img: self.__scale_width(img, self.opt.load_size, method)))
-        elif 'scale_shortside' in self.opt.preprocess_mode:
-            transform_list.append(transforms.Lambda(lambda img: self.__scale_shortside(img, self.opt.load_size, method)))
-
-        if 'crop' in self.opt.preprocess_mode:
-            transform_list.append(transforms.Lambda(lambda img: self.__crop(img, params['crop_pos'], self.opt.crop_size)))
-
-        if self.opt.preprocess_mode == 'none':
-            base = 32
-            transform_list.append(transforms.Lambda(lambda img: self.__make_power_2(img, base, method)))
-
-        if self.opt.preprocess_mode == 'fixed':
-            w = self.opt.crop_size
-            h = round(self.opt.crop_size / self.opt.aspect_ratio)
-            transform_list.append(transforms.Lambda(lambda img: self.__resize(img, w, h, method)))
-
-        if self.opt.isTrain and not self.opt.no_flip:
-            transform_list.append(transforms.Lambda(lambda img: self.__flip(img, params['flip'])))
-
-        if toTensor:
-            transform_list.append(transforms.ToTensor())
-
-        if normalize:
-            if self.opt.input_nc == 1:  # Lidar input (assuming grayscale)
-                transform_list.append(transforms.Normalize((0.5,), (0.5,)))
-
-        return transforms.Compose(transform_list)
-
-    def __len__(self):
-        return len(self.label_paths)
+    
 
     @staticmethod
     def modify_commandline_options(parser, is_train):

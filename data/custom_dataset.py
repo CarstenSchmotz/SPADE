@@ -5,6 +5,7 @@ from data.base_dataset import BaseDataset
 from data.image_folder import make_dataset
 from data.base_dataset import get_params, get_transform_lidar, get_transform_rgbd 
 from torchvision import transforms
+import torch
 
 class CustomDataset(BaseDataset):
     def __init__(self, opt):
@@ -57,7 +58,7 @@ class CustomDataset(BaseDataset):
             lidar = transform_lidar(Image.fromarray(lidar_np))
             print(f"Transformed RGBD shape: {rgbd_image.shape}, Transformed Lidar shape: {lidar.shape}")
 
-            return {'rgbd': rgbd_image, 'lidar': lidar, 'label_path': label_path, 'image_path': image_path, 'lidar_path': lidar_path}
+            return {'rgbd': rgbd_image, 'lidar': lidar, 'label': torch.from_numpy(depth_np).long(), 'label_path': label_path, 'image_path': image_path, 'lidar_path': lidar_path}
         
         except Exception as e:
             print(f"Error processing index {index}: {e}")

@@ -1,13 +1,11 @@
-"""
-Copyright (C) 2019 NVIDIA Corporation.  All rights reserved.
-Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
-"""
-
-from data.base_dataset import BaseDataset, get_params, get_transform
+import numpy as np
 from PIL import Image
+from torchvision.transforms import functional as F
+from data.base_dataset import BaseDataset
+from data.image_folder import make_dataset
+from data.base_dataset import get_params, get_transform
 import util.util as util
 import os
-
 
 class Pix2pixDataset(BaseDataset):
     @staticmethod
@@ -43,10 +41,14 @@ class Pix2pixDataset(BaseDataset):
         self.dataset_size = size
 
     def get_paths(self, opt):
-        label_paths = []
-        image_paths = []
-        instance_paths = []
-        assert False, "A subclass of Pix2pixDataset must override self.get_paths(self, opt)"
+        label_dir = opt.label_dir
+        image_dir = opt.image_dir
+        instance_dir = opt.instance_dir  # Adjust as per your dataset structure
+
+        label_paths = sorted(make_dataset(label_dir, opt.max_dataset_size))
+        image_paths = sorted(make_dataset(image_dir, opt.max_dataset_size))
+        instance_paths = sorted(make_dataset(instance_dir, opt.max_dataset_size))
+
         return label_paths, image_paths, instance_paths
 
     def paths_match(self, path1, path2):
@@ -57,40 +59,39 @@ class Pix2pixDataset(BaseDataset):
     def __getitem__(self, index):
         # Label Image
         label_path = self.label_paths[index]
-        label = Image.open(label_path)
+        label = Image.open(label_path).convert('RGB')  # Adjust the mode as per your label images
+
         params = get_params(self.opt, label.size)
         transform_label = get_transform(self.opt, params, method=Image.NEAREST, normalize=False)
         label_tensor = transform_label(label) * 255.0
         label_tensor[label_tensor == 255] = self.opt.label_nc  # 'unknown' is opt.label_nc
 
-        # input image (real images)
+        # Input Image
         image_path = self.image_paths[index]
         assert self.paths_match(label_path, image_path), \
-            "The label_path %s and image_path %s don't match." % \
-            (label_path, image_path)
-        image = Image.open(image_path)
-        image = image.convert('RGB')
+            "The label_path %s and image_path %s don't match." % (label_path, image_path)
+
+        image = Image.open(image_path).convert('RGB')  # Convert to RGB if necessary
 
         transform_image = get_transform(self.opt, params)
         image_tensor = transform_image(image)
 
-        # if using instance maps
+        # Instance Map
         if self.opt.no_instance:
             instance_tensor = 0
         else:
             instance_path = self.instance_paths[index]
-            instance = Image.open(instance_path)
-            if instance.mode == 'L':
-                instance_tensor = transform_label(instance) * 255
-                instance_tensor = instance_tensor.long()
-            else:
-                instance_tensor = transform_label(instance)
+            instance = Image.open(instance_path).convert('L')  # Convert to grayscale if necessary
 
-        input_dict = {'label': label_tensor,
-                      'instance': instance_tensor,
-                      'image': image_tensor,
-                      'path': image_path,
-                      }
+            instance_tensor = transform_label(instance) * 255
+            instance_tensor = instance_tensor.long()
+
+        input_dict = {
+            'label': label_tensor,
+            'instance': instance_tensor,
+            'image': image_tensor,
+            'path': image_path,
+        }
 
         # Give subclasses a chance to modify the final output
         self.postprocess(input_dict)

@@ -1,50 +1,79 @@
-"""
-Copyright (C) 2019 NVIDIA Corporation.  All rights reserved.
-Licensed under the CC BY-NC-SA 4.0 license (https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode).
-"""
-
-from data.pix2pix_dataset import Pix2pixDataset
+import numpy as np
+from PIL import Image
+from torchvision.transforms import functional as F
+from data.base_dataset import BaseDataset
 from data.image_folder import make_dataset
+from data.base_dataset import get_params, get_transform_lidar, get_transform_rgbd 
+from torchvision import transforms
+import torch
 
+class CustomDataset(BaseDataset):
+    def __init__(self, opt):
+        super().__init__()
+        self.opt = opt
+        self.label_dir = opt.label_dir
+        self.image_dir = opt.image_dir
+        self.lidar_dir = opt.lidar_dir
+        self.val_label_dir = opt.val_label_dir
+        self.val_image_dir = opt.val_image_dir
+        self.val_lidar_dir = opt.val_lidar_dir
 
-class CustomDataset(Pix2pixDataset):
-    """ Dataset that loads images from directories
-        Use option --label_dir, --image_dir, --instance_dir to specify the directories.
-        The images in the directories are sorted in alphabetical order and paired in order.
-    """
+        self.label_paths = sorted(make_dataset(self.label_dir, opt.max_dataset_size))
+        self.image_paths = sorted(make_dataset(self.image_dir, opt.max_dataset_size))
+        self.lidar_paths = sorted(make_dataset(self.lidar_dir, opt.max_dataset_size))
+        self.val_label_paths = sorted(make_dataset(self.val_label_dir, opt.max_dataset_size))
+        self.val_image_paths = sorted(make_dataset(self.val_image_dir, opt.max_dataset_size))
+        self.val_lidar_paths = sorted(make_dataset(self.val_lidar_dir, opt.max_dataset_size))
+
+    def __getitem__(self, index):
+        label_path = self.label_paths[index]
+        image_path = self.image_paths[index]
+        lidar_path = self.lidar_paths[index]
+
+        try:
+            # Read RGB image and depth (label) as grayscale
+            image = Image.open(image_path).convert('RGB')  # RGB image
+            label = Image.open(label_path).convert('L')    # Depth image (grayscale)
+            lidar = Image.open(lidar_path).convert('L')    # Lidar scan (grayscale)
+
+            # Convert images to numpy arrays
+            rgb_np = np.array(image)
+            depth_np = np.array(label)
+            lidar_np = np.array(lidar)
+
+            # Combine RGB and depth into RGBD (4-channel)
+            rgbd_image = np.concatenate((rgb_np, depth_np[:, :, np.newaxis]), axis=2)
+
+            # Print shapes for debugging
+            print(f"RGB shape: {rgb_np.shape}, Depth shape: {depth_np.shape}, Lidar shape: {lidar_np.shape}")
+            print(f"RGBD image shape: {rgbd_image.shape}")
+
+            # Apply transformations
+            #print(label, "label",label.size, "label.size")
+            params = get_params(self.opt, label.size)
+            transform_rgbd = get_transform_rgbd(self.opt,params)
+            transform_lidar = get_transform_lidar(self.opt,params)
+
+            rgbd_image = transform_rgbd(Image.fromarray(rgbd_image))
+            lidar = transform_lidar(Image.fromarray(lidar_np))
+            print(f"Transformed RGBD shape: {rgbd_image.shape}, Transformed Lidar shape: {lidar.shape}")
+
+            return {'rgbd': rgbd_image, 'lidar': lidar, 'label': torch.from_numpy(depth_np).long(), 'label_path': label_path, 'image_path': image_path, 'lidar_path': lidar_path}
+        
+        except Exception as e:
+            print(f"Error processing index {index}: {e}")
+            raise
+
+    def __len__(self):
+        return len(self.label_paths)
 
     @staticmethod
     def modify_commandline_options(parser, is_train):
-        parser = Pix2pixDataset.modify_commandline_options(parser, is_train)
-        parser.set_defaults(preprocess_mode='resize_and_crop')
-        load_size = 286 if is_train else 256
-        parser.set_defaults(load_size=load_size)
-        parser.set_defaults(crop_size=256)
-        parser.set_defaults(display_winsize=256)
-        parser.set_defaults(label_nc=13)
-        parser.set_defaults(contain_dontcare_label=False)
-
-        parser.add_argument('--label_dir', type=str, required=True,
-                            help='path to the directory that contains label images')
-        parser.add_argument('--image_dir', type=str, required=True,
-                            help='path to the directory that contains photo images')
-        parser.add_argument('--instance_dir', type=str, default='',
-                            help='path to the directory that contains instance maps. Leave black if not exists')
+        parser = BaseDataset.modify_commandline_options(parser, is_train)
+        parser.add_argument('--label_dir', type=str, required=True, help='path to the directory that contains label images')
+        parser.add_argument('--image_dir', type=str, required=True, help='path to the directory that contains photo images')
+        parser.add_argument('--lidar_dir', type=str, required=True, help='path to the directory that contains lidar images')
+        parser.add_argument('--val_label_dir', type=str, required=True, help='path to the directory that contains validation label images')
+        parser.add_argument('--val_image_dir', type=str, required=True, help='path to the directory that contains validation photo images')
+        parser.add_argument('--val_lidar_dir', type=str, required=True, help='path to the directory that contains validation lidar images')
         return parser
-
-    def get_paths(self, opt):
-        label_dir = opt.label_dir
-        label_paths = make_dataset(label_dir, recursive=False, read_cache=True)
-
-        image_dir = opt.image_dir
-        image_paths = make_dataset(image_dir, recursive=False, read_cache=True)
-
-        if len(opt.instance_dir) > 0:
-            instance_dir = opt.instance_dir
-            instance_paths = make_dataset(instance_dir, recursive=False, read_cache=True)
-        else:
-            instance_paths = []
-
-        assert len(label_paths) == len(image_paths), "The #images in %s and %s do not match. Is there something wrong?"
-
-        return label_paths, image_paths, instance_paths

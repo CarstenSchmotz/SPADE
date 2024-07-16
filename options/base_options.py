@@ -15,8 +15,30 @@ import pickle
 
 class BaseOptions():
     def __init__(self):
+        self.parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
         self.initialized = False
+    def parse(self):
+        if not self.initialized:
+            self.initialize()
+        self.opt = self.parser.parse_args()
 
+        # Parse gpu_ids string into a list of integers
+        str_ids = self.opt.gpu_ids.split(',')
+        self.opt.gpu_ids = []
+        for str_id in str_ids:
+            id = int(str_id)
+            if id >= 0:
+                self.opt.gpu_ids.append(id)
+
+        # Set GPU device if available and gpu_ids is not empty
+        if len(self.opt.gpu_ids) > 0 and torch.cuda.is_available():
+            torch.cuda.set_device(self.opt.gpu_ids[0])
+        else:
+            self.opt.gpu_ids = [-1]
+            print("Using CPU for training")
+
+        return self.opt
+    
     def initialize(self, parser):
         # experiment specifics
         parser.add_argument('--name', type=str, default='label2coco', help='name of the experiment. It decides where to store samples and models')
@@ -68,7 +90,9 @@ class BaseOptions():
         parser.add_argument('--no_instance', action='store_true', help='if specified, do *not* add instance map as input')
         parser.add_argument('--nef', type=int, default=16, help='# of encoder filters in the first conv layer')
         parser.add_argument('--use_vae', action='store_true', help='enable training with an image encoder.')
-
+        #for cpu use only
+        self.parser.add_argument('--gpu_ids', type=str, default='0', help='gpu ids: e.g. 0, 1, 2. use -1 for CPU')
+       
         self.initialized = True
         return parser
 
@@ -175,6 +199,8 @@ class BaseOptions():
                 opt.gpu_ids.append(id)
         if len(opt.gpu_ids) > 0:
             torch.cuda.set_device(opt.gpu_ids[0])
+        else:
+            opt.gpu_ids = [] 
 
         assert len(opt.gpu_ids) == 0 or opt.batchSize % len(opt.gpu_ids) == 0, \
             "Batch size %d is wrong. It must be a multiple of # GPUs %d." \

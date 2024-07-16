@@ -63,7 +63,8 @@ class CustomDataset(BaseDataset):
             print(f"Error processing index {index}: {e}")
             raise
 
-    
+    def __len__(self):
+        return len(self.label_paths)
 
     @staticmethod
     def modify_commandline_options(parser, is_train):

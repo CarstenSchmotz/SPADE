@@ -27,58 +27,111 @@ class CustomDataset(BaseDataset):
         image_path = self.image_paths[index]
         lidar_path = self.lidar_paths[index]
 
-        # Read RGB image and depth (label) as grayscale
-        image = Image.open(image_path).convert('RGB')  # RGB image
-        label = Image.open(label_path).convert('L')    # Depth image (grayscale)
-        lidar = Image.open(lidar_path).convert('L')    # Lidar scan (grayscale)
+        try:
+            # Read RGB image and depth (label) as grayscale
+            image = Image.open(image_path).convert('RGB')  # RGB image
+            label = Image.open(label_path).convert('L')    # Depth image (grayscale)
+            lidar = Image.open(lidar_path).convert('L')    # Lidar scan (grayscale)
 
-        # Combine RGB and depth into RGBD (4-channel)
-        rgb_np = np.array(image)
-        depth_np = np.array(label)
-        lidar_np = np.array(lidar)
+            # Convert images to numpy arrays
+            rgb_np = np.array(image)
+            depth_np = np.array(label)
+            lidar_np = np.array(lidar)
 
-        # Debugging: print the shapes of the numpy arrays
-        print(f"RGB shape: {rgb_np.shape}, Depth shape: {depth_np.shape}, Lidar shape: {lidar.size}")
+            # Combine RGB and depth into RGBD (4-channel)
+            rgbd_image = np.concatenate((rgb_np, depth_np[:, :, np.newaxis]), axis=2)
 
+            # Print shapes for debugging
+            print(f"RGB shape: {rgb_np.shape}, Depth shape: {depth_np.shape}, Lidar shape: {lidar_np.shape}")
+            print(f"RGBD image shape: {rgbd_image.shape}")
 
-        # Check if depth image has the correct shape
-        if len(depth_np.shape) != 2:
-            raise ValueError(f"Expected depth image to have 2 dimensions, got {depth_np.shape}")
+            # Apply transformations
+            params = get_params(self.opt, label.size)
+            transform_rgbd = get_transform(self.opt, params, input_nc=4)
+            transform_lidar = get_transform(self.opt, params, input_nc=1)
 
-        # Ensure the depth image has the same width and height as the RGB image
-        if depth_np.shape[0] != rgb_np.shape[0] or depth_np.shape[1] != rgb_np.shape[1]:
-            raise ValueError(f"Depth image size {depth_np.shape} does not match RGB image size {rgb_np.shape}")
+            rgbd_image = transform_rgbd(Image.fromarray(rgbd_image))
+            lidar = transform_lidar(Image.fromarray(lidar_np))
+            print(f"Transformed RGBD shape: {rgbd_image.shape}, Transformed Lidar shape: {lidar.shape}")
 
-        # Add a new axis to depth image to make it (H, W, 1)
-        depth_np = depth_np[:, :, np.newaxis]
-
-        # Combine the RGB and depth images
-        rgbd_image = np.concatenate((rgb_np, depth_np), axis=2)
-
-        # Apply transformations
-        params = get_params(self.opt, label.size)
-
-        # Debugging: print the params and sizes before transformations
-        print(f"Params: {params}, Label size: {label.size}, RGBD image shape: {rgbd_image.shape}, Lidar size: {lidar.size}")
-
-        # Ensure sizes are tuples of length 2 before applying transformations
-        if not (isinstance(label.size, tuple) and len(label.size) == 2):
-            raise TypeError(f"Expected label.size to be a tuple of length 2, got {type(label.size)}")
-        if not (isinstance(rgbd_image.shape, tuple) and len(rgbd_image.shape) == 3):
-            raise TypeError(f"Expected rgbd_image.shape to be a tuple of length 3, got {type(rgbd_image.shape)}")
-        if not (isinstance(lidar.size, tuple) and len(lidar.size) == 2):
-            raise TypeError(f"Expected lidar.size to be a tuple of length 2, got {type(lidar.size)}")
-
-        # Transformations
-        transform_rgbd = get_transform(self.opt, params)  # Assuming get_transform handles 4-channel input
-        transform_lidar = get_transform(self.opt, params)  # Adjust for lidar input
-
-        # Convert numpy array to PIL image before applying transformations
-        rgbd_image = transform_rgbd(Image.fromarray(rgbd_image))
-        lidar = transform_lidar(lidar)
-        print(f"Transformed RGBD shape: {rgbd_image.shape}, Transformed Lidar shape: {lidar.shape}")
+            return {'rgbd': rgbd_image, 'lidar': lidar, 'label_path': label_path, 'image_path': image_path, 'lidar_path': lidar_path}
         
-        return {'rgbd': rgbd_image, 'lidar': lidar, 'label_path': label_path, 'image_path': image_path, 'lidar_path': lidar_path}
+        except Exception as e:
+            print(f"Error processing index {index}: {e}")
+            raise
+
+
+    # Separate functions for RGBD and Lidar transformations
+    def get_transform_rgbd(opt, params, method=Image.BICUBIC, normalize=True, toTensor=True):
+        transform_list = []
+
+        if 'resize' in opt.preprocess_mode:
+            osize = [opt.load_size, opt.load_size]
+            transform_list.append(transforms.Resize(osize, interpolation=method))
+        elif 'scale_width' in opt.preprocess_mode:
+            transform_list.append(transforms.Lambda(lambda img: __scale_width(img, opt.load_size, method)))
+        elif 'scale_shortside' in opt.preprocess_mode:
+            transform_list.append(transforms.Lambda(lambda img: __scale_shortside(img, opt.load_size, method)))
+
+        if 'crop' in opt.preprocess_mode:
+            transform_list.append(transforms.Lambda(lambda img: __crop(img, params['crop_pos'], opt.crop_size)))
+
+        if opt.preprocess_mode == 'none':
+            base = 32
+            transform_list.append(transforms.Lambda(lambda img: __make_power_2(img, base, method)))
+
+        if opt.preprocess_mode == 'fixed':
+            w = opt.crop_size
+            h = round(opt.crop_size / opt.aspect_ratio)
+            transform_list.append(transforms.Lambda(lambda img: __resize(img, w, h, method)))
+
+        if opt.isTrain and not opt.no_flip:
+            transform_list.append(transforms.Lambda(lambda img: __flip(img, params['flip'])))
+
+        if toTensor:
+            transform_list.append(transforms.ToTensor())
+
+        if normalize:
+            if opt.input_nc == 4:  # RGBD input
+                transform_list.append(transforms.Normalize((0.5, 0.5, 0.5, 0.5), (0.5, 0.5, 0.5, 0.5)))
+
+        return transforms.Compose(transform_list)
+
+    def get_transform_lidar(opt, params, method=Image.BICUBIC, normalize=True, toTensor=True):
+        transform_list = []
+
+        if 'resize' in opt.preprocess_mode:
+            osize = [opt.load_size, opt.load_size]
+            transform_list.append(transforms.Resize(osize, interpolation=method))
+        elif 'scale_width' in opt.preprocess_mode:
+            transform_list.append(transforms.Lambda(lambda img: __scale_width(img, opt.load_size, method)))
+        elif 'scale_shortside' in opt.preprocess_mode:
+            transform_list.append(transforms.Lambda(lambda img: __scale_shortside(img, opt.load_size, method)))
+
+        if 'crop' in opt.preprocess_mode:
+            transform_list.append(transforms.Lambda(lambda img: __crop(img, params['crop_pos'], opt.crop_size)))
+
+        if opt.preprocess_mode == 'none':
+            base = 32
+            transform_list.append(transforms.Lambda(lambda img: __make_power_2(img, base, method)))
+
+        if opt.preprocess_mode == 'fixed':
+            w = opt.crop_size
+            h = round(opt.crop_size / opt.aspect_ratio)
+            transform_list.append(transforms.Lambda(lambda img: __resize(img, w, h, method)))
+
+        if opt.isTrain and not opt.no_flip:
+            transform_list.append(transforms.Lambda(lambda img: __flip(img, params['flip'])))
+
+        if toTensor:
+            transform_list.append(transforms.ToTensor())
+
+        if normalize:
+            if opt.input_nc == 1:  # Lidar input (assuming grayscale)
+                transform_list.append(transforms.Normalize((0.5,), (0.5,)))
+
+        return transforms.Compose(transform_list)
+
 
 
 
